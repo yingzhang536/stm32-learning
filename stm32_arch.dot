@@ -1,0 +1,41 @@
+digraph stm32_scope {
+    graph [fontname="Droid Sans Fallback", fontsize=12,
+        bgcolor="#0f172a", pad="0.5", ranksep="0.6", nodesep="0.35",
+        label="STM32 简易示波器 — 数据流架构", labelloc="t", labeljust="l",
+        fontcolor="#e2e8f0"];
+    node [fontname="Droid Sans Fallback", fontsize=10, shape=box, style="rounded,filled",
+        color="#334155", fillcolor="#1e293b", fontcolor="#e2e8f0", penwidth=1];
+    edge [fontname="Droid Sans Fallback", fontsize=8, color="#64748b", fontcolor="#94a3b8"];
+
+    // ============ 采样链路（硬件节拍，CPU 零开销）============
+    subgraph cluster_sample {
+        label="① 采样链路（硬件节拍，CPU 零开销）"; fontcolor="#7dd3fc"; style="rounded"; color="#155e75";
+        TIM3 [label="TIM3 定时器\n25Hz 更新事件 TRGO\nPSC=7199 / ARR=399", fillcolor="#164e63"];
+        ADC1 [label="ADC1 外部触发\nPA0 光敏分压\nEXTSEL=TIM3_TRGO", fillcolor="#164e63"];
+        DMA1 [label="DMA1_CH1 循环搬运\n16 位 128 点\nCNDTR 定位写位置", fillcolor="#164e63"];
+        Buf [label="环形缓冲 adc_buf[128]\nDMA 持续写入", fillcolor="#164e63"];
+    }
+
+    // ============ 显示链路（CPU 每 200ms 取帧）============
+    subgraph cluster_disp {
+        label="② 显示链路（CPU 每 200ms 取帧）"; fontcolor="#86efac"; style="rounded"; color="#166534";
+        CPU [label="CPU 快照防撕裂\n(255-CNDTR)%128 定位最新点\n旋转窗口：最右=最新", fillcolor="#14532d"];
+        OLED [label="OLED SSD1306 128x64\n软件 I2C PB8/PB9\n影子显存整页刷出", fillcolor="#14532d"];
+    }
+
+    // ============ 交互 ============
+    subgraph cluster_io {
+        label="③ 交互"; fontcolor="#fbbf24"; style="rounded"; color="#92400e";
+        Key [label="按键 PB14\n短按=量程切换 R1/R2/R3\n长按=串口导出 CSV", fillcolor="#451a03"];
+        UART [label="USART1 115200\n波形采样点 CSV 导出", fillcolor="#451a03"];
+    }
+
+    // ============ 连线 ============
+    TIM3 -> ADC1 [label="TRGO 触发转换"];
+    ADC1 -> DMA1 [label="转换完成 DMA 请求"];
+    DMA1 -> Buf [label="循环写入"];
+    Buf -> CPU [label="200ms 快照"];
+    CPU -> OLED [label="波形渲染"];
+    Key -> CPU [label="短按/长按"];
+    CPU -> UART [label="CSV 导出"];
+}
