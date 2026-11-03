@@ -1,0 +1,17 @@
+# Keil 编译临时产物（.uvprojx 是工程本体，保留）
+Objects/
+Listings/
+DebugConfig/
+*.uvguix.*
+*.uvoptx
+
+# 编译文件
+*.o
+*.axf
+*.map
+*.crf
+*.dep
+*.htm
+
+# 备份
+*.bak
